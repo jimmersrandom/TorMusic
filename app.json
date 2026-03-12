@@ -1,30 +1,34 @@
 {
   "expo": {
-    "name": "TorMusic",
-    "slug": "tormusic",
+    "name": "Velvt",
+    "slug": "velvt",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0a0a0a"
+      "backgroundColor": "#0a0a0f"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.tormusic.app",
+      "bundleIdentifier": "com.velvt.app",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"],
-        "NSAppleMusicUsageDescription": "TorMusic needs access to play audio files"
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
+      "package": "com.velvt.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0a0a0a"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0a0a0f"
       },
-      "package": "com.tormusic.app"
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -36,9 +40,12 @@
         }
       ]
     ],
-    "scheme": "tormusic",
-    "experiments": {
-      "typedRoutes": true
+    "scheme": "velvt",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c60f1325-98aa-429b-8fa8-59ec757f6f50"
+      }
     }
   }
 }

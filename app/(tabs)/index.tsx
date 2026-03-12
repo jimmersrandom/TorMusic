@@ -4,6 +4,7 @@ import {
   RefreshControl, ActivityIndicator, TextInput, Dimensions,
   ScrollView, Modal, Alert, Image,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -121,6 +122,7 @@ function SectionHeading({ title, onSeeAll }: { title: string; onSeeAll: () => vo
 }
 
 export default function LibraryScreen() {
+  const router = useRouter();
   const library = useLibrary();
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -578,6 +580,9 @@ export default function LibraryScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Library</Text>
         <Text style={styles.headerCount}>{Object.keys(albumGroups).length} albums</Text>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/books')} style={{ padding: 4 }}>
+          <Ionicons name="book-outline" size={22} color={Colors.textMuted} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.searchContainer}>

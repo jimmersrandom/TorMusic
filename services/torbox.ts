@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TORBOX_BASE_URL = 'https://api.torbox.app/v1/api';
 
+const BOOK_EXTENSIONS = ['.epub'];
+const AUDIOBOOK_EXTENSIONS = ['.m4b'];
 const AUDIO_EXTENSIONS = [
   '.flac', '.mp3', '.aac', '.m4a', '.wav', '.ogg', '.opus',
   '.alac', '.aiff', '.wma', '.ape', '.dsf', '.dsd'
@@ -43,6 +45,7 @@ export interface AudioTrack {
   year: string;
   addedAt: string;
   streamUrl?: string;
+  mediaType?: 'music' | 'audiobook' | 'ebook';
 }
 
 function isAudioFile(filename: string, mimetype?: string): boolean {
@@ -51,6 +54,21 @@ function isAudioFile(filename: string, mimetype?: string): boolean {
   if (AUDIO_EXTENSIONS.some(ext => lower.endsWith(ext))) return true;
   if (mimetype && mimetype.startsWith('audio/')) return true;
   return false;
+}
+
+
+function isAudiobookFile(filename: string, torrentName?: string): boolean {
+  const lower = filename.toLowerCase();
+  if (AUDIOBOOK_EXTENSIONS.some(ext => lower.endsWith(ext))) return true;
+  const tl = (torrentName || '').toLowerCase();
+  if (tl.includes('audiobook') || tl.includes('audio book')) {
+    if (['.mp3', '.m4a', '.aac'].some(ext => lower.endsWith(ext))) return true;
+  }
+  return false;
+}
+
+function isEbookFile(filename: string): boolean {
+  return BOOK_EXTENSIONS.some(ext => filename.toLowerCase().endsWith(ext));
 }
 
 export function cleanTorrentName(raw: string): { artist: string; album: string; year: string; clean: string } {
@@ -150,7 +168,10 @@ export async function fetchAudioTracks(apiKey: string): Promise<AudioTrack[]> {
     const { artist, album, year, clean } = cleanTorrentName(torrent.name);
     for (const file of torrent.files) {
       if (!file || !file.name) continue;
-      if (isAudioFile(file.name, file.mimetype)) {
+      const _isAudiobook = isAudiobookFile(file.name, torrent.name);
+      const _isEbook = isEbookFile(file.name);
+      const _isAudio = !_isAudiobook && !_isEbook && isAudioFile(file.name, file.mimetype);
+      if (_isAudio || _isAudiobook || _isEbook) {
         tracks.push({
           id: `${torrent.id}-${file.id}`,
           torrentId: torrent.id,
@@ -165,6 +186,7 @@ export async function fetchAudioTracks(apiKey: string): Promise<AudioTrack[]> {
           album,
           year,
           addedAt: torrent.created_at,
+          mediaType: _isEbook ? 'ebook' : _isAudiobook ? 'audiobook' : 'music',
         });
       }
     }

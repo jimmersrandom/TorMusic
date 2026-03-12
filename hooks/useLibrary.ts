@@ -117,8 +117,8 @@ export function useLibrary() {
     return fetchLibrary(apiKey, true);
   }, [fetchLibrary]);
 
-  const recentTracks = sortByRecent(tracks).slice(0, 50);
-  const albumGroups = groupByAlbum(tracks);
+  const recentTracks = sortByRecent(tracks.filter(t => !t.mediaType || t.mediaType === 'music')).slice(0, 50);
+  const albumGroups = groupByAlbum(tracks.filter(t => !t.mediaType || t.mediaType === 'music'));
 
   return {
     tracks, recentTracks, albumGroups,

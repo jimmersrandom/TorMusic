@@ -1,23 +1,7 @@
-# TorMusic 🎵
+# Velvt 🎵
 
 A music player for your Torbox library. Streams audio files directly, including FLAC.
 
-## Setup
-
-### 1. Install dependencies
-```bash
-npm install
-```
-
-### 2. Start the app
-```bash
-npx expo start
-```
-
-### 3. Open on iPhone
-- Install **Expo Go** from the App Store
-- Scan the QR code shown in your terminal
-- Enter your Torbox API key in Settings
 
 ## Features
 - 🎵 FLAC, MP3, AAC, WAV, OGG, OPUS support

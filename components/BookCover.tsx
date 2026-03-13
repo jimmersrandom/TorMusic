@@ -18,28 +18,31 @@ export function BookCover({ torrentName, width, borderRadius = 8 }: Props) {
   useEffect(() => {
     setArtUrl(null);
     const { artist, album, clean } = cleanTorrentName(torrentName);
-    let rawTitle = album || clean;
 
-    // Extract "by Author" from title if present
-    let extractedAuthor = artist || undefined;
-    const byMatch = rawTitle.match(/^(.+?)\s+by\s+([A-Z][^(\[]+?)(?:\s+M4B|\s+MP3|\s+Audiobook|\s*$)/i);
+    // If album looks like format junk and artist looks like a real title, swap them
+    const junkPattern = /full.cast|unabridged|stereo|split.chapters|edition|audiobook/i;
+    const artistIsTitle = !!(artist && junkPattern.test(album) && !junkPattern.test(artist));
+
+    let rawTitle = artistIsTitle ? artist : (album || clean);
+    let extractedAuthor: string | undefined = undefined;
+
+    // Try "Title by Author" pattern in full torrent name
+    const byMatch = torrentName.match(/^(.+?)\s+by\s+([A-Z][a-zA-Z .]{3,40}?)(?:\s+(?:Full.Cast|Unabridged|Audiobook|M4B|MP3|Stereo|\d{4}|\[|\())/i);
     if (byMatch) {
       rawTitle = byMatch[1].trim();
-      if (!extractedAuthor) extractedAuthor = byMatch[2].trim();
+      extractedAuthor = byMatch[2].trim();
     }
 
-    // Strip format tags from title
     const title = rawTitle
-      .replace(/\bM4B\b/gi, '')
-      .replace(/\bMP3\b/gi, '')
-      .replace(/\bAudiobook\b/gi, '')
-      .replace(/\bUnabridged\b/gi, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+      .replace(/\bM4B\b/gi, '').replace(/\bMP3\b/gi, '').replace(/\bAudiobook\b/gi, '')
+      .replace(/Full.Cast Edition.*/i, '').replace(/Unabridged.*/i, '').replace(/Stereo.*/i, '')
+      .replace(/split chapters.*/i, '').replace(/\s+/g, ' ').trim();
+
     const author = extractedAuthor;
     console.log('[BookCover] title:', title, 'author:', author);
+
     if (title) {
-      fetchBookCover(title, author).then(url => {
+      fetchBookCover(title, author, torrentName).then(url => {
         console.log('[BookCover] result:', title, '->', url);
         setArtUrl(url);
       });
@@ -55,7 +58,6 @@ export function BookCover({ torrentName, width, borderRadius = 8 }: Props) {
       />
     );
   }
-
   return (
     <View style={[styles.placeholder, { width, height, borderRadius }]}>
       <View style={styles.spine} />

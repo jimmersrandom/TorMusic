@@ -135,6 +135,18 @@ export function usePlayer() {
           playStartTimeRef.current!.trackPosition + elapsed,
           prev.duration || 999999
         );
+        // Fallback: if position reached duration, advance to next track
+        if (prev.duration > 0 && position >= prev.duration - 800) {
+          const { repeat, queueIndex, queue, shuffle } = stateRef.current;
+          if (repeat === 'one') {
+            setTimeout(() => playTrackAtIndex(queueIndex, queue), 100);
+          } else if (queueIndex < queue.length - 1) {
+            setTimeout(() => playTrackAtIndex(shuffle ? Math.floor(Math.random() * queue.length) : queueIndex + 1, queue), 100);
+          } else if (repeat === 'all') {
+            setTimeout(() => playTrackAtIndex(0, queue), 100);
+          }
+          playStartTimeRef.current = null;
+        }
         return {
           ...prev,
           position,

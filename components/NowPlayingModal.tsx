@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
   View, Text, Modal, TouchableOpacity, StyleSheet,
-  Dimensions, ScrollView, TouchableWithoutFeedback, Animated,
+  Dimensions, ScrollView, TouchableWithoutFeedback, Animated, ImageBackground,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,15 +48,33 @@ export function NowPlayingModal({
   } = state;
 
   const [showLyrics, setShowLyrics] = useState(false);
+  const [bookBgUrl, setBookBgUrl] = useState<string | null>(null);
   const flipAnim = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView>(null);
   const lineHeightRef = useRef(36);
   const artSize = width - 80;
-  const bookArtWidth = Math.round((width - 80) * 0.6); // narrower for portrait covers
+  const bookArtWidth = Math.round((width - 80) * 0.75); // narrower for portrait covers
 
   // Reset to art view when track changes
   useEffect(() => {
     setShowLyrics(false);
+    setBookBgUrl(null);
+    if (currentTrack?.mediaType === 'audiobook') {
+      // Use same title extraction as BookCover component
+      const { fetchBookCover } = require('../services/audiobooks');
+      const { cleanTorrentName } = require('../services/torbox');
+      const { artist, album, clean } = cleanTorrentName(currentTrack.torrentName);
+      let rawTitle = album || clean;
+      let extractedAuthor = artist || undefined;
+      const byMatch = rawTitle.match(/^(.+?)\s+by\s+([A-Z][a-zA-Z .]+?)(?:\s+(?:Full.Cast|Unabridged|Audiobook|M4B|MP3|Stereo|\d{4}|\[|\())/i);
+      if (byMatch) { rawTitle = byMatch[1].trim(); if (!extractedAuthor) extractedAuthor = byMatch[2].trim(); }
+      const title = rawTitle.replace(/M4B/gi, '').replace(/MP3/gi, '').replace(/Audiobook/gi, '').trim();
+      console.log('[BG] fetching:', title, extractedAuthor);
+      fetchBookCover(title, extractedAuthor).then((url: string | null) => {
+        console.log('[BG] result:', url);
+        if (url) setBookBgUrl(url);
+      });
+    }
     Animated.timing(flipAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
   }, [currentTrack?.id]);
 
@@ -107,23 +125,35 @@ export function NowPlayingModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <ImageBackground
+        source={bookBgUrl && currentTrack?.mediaType === 'audiobook' ? { uri: bookBgUrl } : undefined}
+        style={styles.container}
+        imageStyle={{ opacity: 0.4, transform: [{ scale: 1.3 }] }}
+        blurRadius={25}
+      >
+        {bookBgUrl && currentTrack?.mediaType === 'audiobook' && (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.65)' }]} />
+        )}
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
             <Ionicons name="chevron-down" size={28} color={Colors.textSecondary} />
           </TouchableOpacity>
           <Text style={styles.headerLabel}>
-            {showLyrics ? 'LYRICS' : 'NOW PLAYING'}
+            {currentTrack.mediaType === 'audiobook' ? 'AUDIOBOOK' : showLyrics ? 'LYRICS' : 'NOW PLAYING'}
           </Text>
           <View style={{ width: 44 }} />
         </View>
 
         {/* Flippable art / lyrics card */}
-        <TouchableWithoutFeedback onPress={handleArtPress}>
-          <View style={[styles.artwork, { width: artSize, height: currentTrack.mediaType === 'audiobook' ? Math.round(bookArtWidth * 1.5) : artSize }]}>
+        <TouchableWithoutFeedback onPress={currentTrack.mediaType !== 'audiobook' ? handleArtPress : undefined}>
+          <View style={[styles.artwork, { alignSelf: 'center' }, { width: artSize, height: currentTrack.mediaType === 'audiobook' ? Math.round(bookArtWidth * 1.5) : artSize, alignItems: 'center', justifyContent: 'center' }]}>
 
-            {/* Front: Album Art */}
+            {currentTrack.mediaType === 'audiobook' ? (
+              <View style={{ alignItems: 'center' }}>
+                <BookCover torrentName={currentTrack.torrentName} width={bookArtWidth} borderRadius={20} />
+              </View>
+            ) : (
             <Animated.View
               style={[
                 styles.cardFace,
@@ -131,16 +161,14 @@ export function NowPlayingModal({
                 { opacity: frontOpacity, transform: [{ rotateY: frontRotate }] },
               ]}
             >
-              {currentTrack.mediaType === 'audiobook'
-                ? <BookCover torrentName={currentTrack.torrentName} width={bookArtWidth} borderRadius={16} />
-                : <AlbumArt torrentName={currentTrack.torrentName} size={artSize} borderRadius={16} />
-              }
+              <AlbumArt torrentName={currentTrack.torrentName} size={artSize} borderRadius={16} />
               <View style={[styles.extBadge, { borderColor: extColor }]}>
                 <Text style={[styles.extBadgeText, { color: extColor }]}>
                   {currentTrack.extension.replace('.', '').toUpperCase()}
                 </Text>
               </View>
             </Animated.View>
+            )}
 
             {/* Back: Lyrics */}
             <Animated.View
@@ -190,25 +218,32 @@ export function NowPlayingModal({
           </View>
         </TouchableWithoutFeedback>
 
-        {/* Tap hint — below the card, toggles with state */}
-        <TouchableOpacity onPress={handleArtPress} style={styles.tapHintRow}>
-          <Ionicons
-            name={showLyrics ? 'image-outline' : 'musical-notes-outline'}
-            size={13}
-            color={Colors.textMuted}
-          />
-          <Text style={styles.tapHintText}>
-            {showLyrics ? 'tap for artwork' : 'tap for lyrics'}
-          </Text>
-        </TouchableOpacity>
+        {/* Tap hint — music only */}
+        {currentTrack.mediaType !== 'audiobook' && (
+          <TouchableOpacity onPress={handleArtPress} style={styles.tapHintRow}>
+            <Ionicons
+              name={showLyrics ? 'image-outline' : 'musical-notes-outline'}
+              size={13}
+              color={Colors.textMuted}
+            />
+            <Text style={styles.tapHintText}>
+              {showLyrics ? 'tap for artwork' : 'tap for lyrics'}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* Track info */}
-        <View style={styles.trackInfo}>
-          <Text style={styles.trackName} numberOfLines={2}>{currentTrack.displayName}</Text>
-          <Text style={styles.albumName} numberOfLines={1}>{currentTrack.torrentName}</Text>
-          <Text style={styles.fileSize}>{formatFileSize(currentTrack.size)}</Text>
+        <View style={[styles.trackInfo, currentTrack.mediaType === 'audiobook' && { alignItems: 'center', marginTop: 40, marginBottom: 8 }]}>
+          <Text style={[styles.trackName, currentTrack.mediaType === 'audiobook' && { textAlign: 'center', fontSize: 20 }]} numberOfLines={3}>{currentTrack.displayName}</Text>
+          {currentTrack.mediaType !== 'audiobook' && (
+            <Text style={styles.albumName} numberOfLines={1}>{currentTrack.torrentName}</Text>
+          )}
+          {currentTrack.mediaType !== 'audiobook' && (
+            <Text style={styles.fileSize}>{formatFileSize(currentTrack.size)}</Text>
+          )}
         </View>
 
+        {currentTrack.mediaType === 'audiobook' && <View style={{ flex: 1 }} />}
         {/* Seek bar */}
         <View style={styles.seekSection}>
           <Slider
@@ -231,9 +266,11 @@ export function NowPlayingModal({
 
         {/* Controls */}
         <View style={styles.controls}>
-          <TouchableOpacity onPress={onToggleShuffle} style={styles.controlBtn}>
-            <Ionicons name="shuffle" size={22} color={shuffle ? Colors.accent : Colors.textSecondary} />
-          </TouchableOpacity>
+          {currentTrack.mediaType !== 'audiobook' ? (
+            <TouchableOpacity onPress={onToggleShuffle} style={styles.controlBtn}>
+              <Ionicons name="shuffle" size={22} color={shuffle ? Colors.accent : Colors.textSecondary} />
+            </TouchableOpacity>
+          ) : <View style={styles.controlBtn} />}
           <TouchableOpacity onPress={onSkipPrev} style={styles.controlBtn}>
             <Ionicons name="play-skip-back" size={30} color={Colors.text} />
           </TouchableOpacity>
@@ -247,22 +284,26 @@ export function NowPlayingModal({
           <TouchableOpacity onPress={onSkipNext} style={styles.controlBtn}>
             <Ionicons name="play-skip-forward" size={30} color={Colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={onToggleRepeat} style={styles.controlBtn}>
-            <Ionicons name={repeatIcon} size={22} color={repeat !== 'none' ? Colors.accent : Colors.textSecondary} />
-            {repeat === 'one' && <View style={styles.repeatOneDot} />}
-          </TouchableOpacity>
+          {currentTrack.mediaType !== 'audiobook' ? (
+            <TouchableOpacity onPress={onToggleRepeat} style={styles.controlBtn}>
+              <Ionicons name={repeatIcon} size={22} color={repeat !== 'none' ? Colors.accent : Colors.textSecondary} />
+              {repeat === 'one' && <View style={styles.repeatOneDot} />}
+            </TouchableOpacity>
+          ) : <View style={styles.controlBtn} />}
         </View>
 
-        <View style={styles.queueInfo}>
-          <Text style={styles.queueText}>{state.queueIndex + 1} of {state.queue.length} tracks</Text>
-        </View>
-      </View>
+        {currentTrack.mediaType !== 'audiobook' && (
+          <View style={styles.queueInfo}>
+            <Text style={styles.queueText}>{state.queueIndex + 1} of {state.queue.length} tracks</Text>
+          </View>
+        )}
+      </ImageBackground>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background, paddingHorizontal: 24 },
+  container: { flex: 1, backgroundColor: Colors.background, paddingHorizontal: 24, flexDirection: 'column' },
   header: {
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', paddingTop: 16, paddingBottom: 8,
@@ -272,7 +313,7 @@ const styles = StyleSheet.create({
 
   artwork: {
     alignSelf: 'center',
-    marginTop: 24,
+    marginTop: 8,
     marginBottom: 0,
     position: 'relative',
   },

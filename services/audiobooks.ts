@@ -47,6 +47,7 @@ export function parseChapters(tracks: { id: string; displayName: string; size: n
 // ─── Book Cover Art (Open Library) ───────────────────────────────────────────
 
 const bookCoverCache: Record<string, string | null> = {};
+const torrentCoverMap: Record<string, string> = {};
 const BOOK_COVER_CACHE_KEY = 'velvt_book_cover_cache';
 
 export async function clearBookCoverCache() {
@@ -74,7 +75,11 @@ async function saveBookCoverCache() {
   } catch {}
 }
 
-export async function fetchBookCover(title: string, author?: string): Promise<string | null> {
+export function getBookCoverFromCache(torrentName: string): string | null {
+  return torrentCoverMap[torrentName] || null;
+}
+
+export async function fetchBookCover(title: string, author?: string, torrentName?: string): Promise<string | null> {
   const cacheKey = `${title}|${author || ''}`.toLowerCase();
   if (cacheKey in bookCoverCache) return bookCoverCache[cacheKey];
 
@@ -107,6 +112,7 @@ export async function fetchBookCover(title: string, author?: string): Promise<st
         const url = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
         console.log('[fetchBookCover]', title, '->', url);
         bookCoverCache[cacheKey] = url;
+        if (torrentName) torrentCoverMap[torrentName] = url;
         await saveBookCoverCache();
         return url;
       }

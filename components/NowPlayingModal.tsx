@@ -9,6 +9,7 @@ import { Colors } from '../constants/colors';
 import { PlayerState } from '../hooks/usePlayer';
 import { formatFileSize } from '../services/torbox';
 import { AlbumArt } from './AlbumArt';
+import { BookCover } from './BookCover';
 import { useLyrics } from '../hooks/useLyrics';
 
 const { width } = Dimensions.get('window');
@@ -51,6 +52,7 @@ export function NowPlayingModal({
   const scrollRef = useRef<ScrollView>(null);
   const lineHeightRef = useRef(36);
   const artSize = width - 80;
+  const bookArtWidth = Math.round((width - 80) * 0.6); // narrower for portrait covers
 
   // Reset to art view when track changes
   useEffect(() => {
@@ -119,7 +121,7 @@ export function NowPlayingModal({
 
         {/* Flippable art / lyrics card */}
         <TouchableWithoutFeedback onPress={handleArtPress}>
-          <View style={[styles.artwork, { width: artSize, height: artSize }]}>
+          <View style={[styles.artwork, { width: artSize, height: currentTrack.mediaType === 'audiobook' ? Math.round(bookArtWidth * 1.5) : artSize }]}>
 
             {/* Front: Album Art */}
             <Animated.View
@@ -129,7 +131,10 @@ export function NowPlayingModal({
                 { opacity: frontOpacity, transform: [{ rotateY: frontRotate }] },
               ]}
             >
-              <AlbumArt torrentName={currentTrack.torrentName} size={artSize} borderRadius={16} />
+              {currentTrack.mediaType === 'audiobook'
+                ? <BookCover torrentName={currentTrack.torrentName} width={bookArtWidth} borderRadius={16} />
+                : <AlbumArt torrentName={currentTrack.torrentName} size={artSize} borderRadius={16} />
+              }
               <View style={[styles.extBadge, { borderColor: extColor }]}>
                 <Text style={[styles.extBadgeText, { color: extColor }]}>
                   {currentTrack.extension.replace('.', '').toUpperCase()}

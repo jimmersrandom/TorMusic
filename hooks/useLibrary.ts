@@ -51,6 +51,10 @@ export function useLibrary() {
     await loadArtistImageCache();
     const { loadDownloads } = await import('../services/downloads');
     await loadDownloads();
+    const { loadResumePositions, loadBookCoverCache, clearBookCoverCache } = await import('../services/audiobooks');
+    await clearBookCoverCache();
+    await loadResumePositions();
+    await loadBookCoverCache();
     await loadMetadataOverrides();
     forceRefresh = true; // Always rebuild from API to apply overrides
     setLoading(true);

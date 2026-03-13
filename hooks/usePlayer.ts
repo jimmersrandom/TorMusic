@@ -182,6 +182,26 @@ export function usePlayer() {
         return;
       }
 
+      // Use local file if available (offline playback)
+      if (track.streamUrl && track.streamUrl.startsWith('file://')) {
+        try {
+          console.log('Playing from local file:', track.displayName);
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: track.streamUrl },
+            { shouldPlay: true, progressUpdateIntervalMillis: 100 },
+            stableCallback
+          );
+          if (loadingIdRef.current !== loadId) { await sound.unloadAsync(); return; }
+          soundRef.current = sound;
+          sound.setOnPlaybackStatusUpdate(stableCallback);
+          playStartTimeRef.current = { wallTime: Date.now(), trackPosition: 0 };
+          updateState({ isLoading: false, isPlaying: true, position: 0, progress: 0, queue, queueIndex: index });
+          startPolling();
+          return;
+        } catch (e: any) {
+          console.log('Local file failed:', e.message);
+        }
+      }
       // Try WebDAV
       const webdavCreds = await getWebDAVCredentials();
       if (webdavCreds) {
@@ -309,6 +329,12 @@ export function usePlayer() {
   const seekTo = useCallback(async (positionMs: number) => {
     await soundRef.current?.setPositionAsync(positionMs);
     playStartTimeRef.current = { wallTime: Date.now(), trackPosition: positionMs };
+    // Immediately save resume position if this is an audiobook
+    const current = stateRef.current.currentTrack;
+    if (current?.mediaType === 'audiobook' && positionMs > 30000) {
+      const { saveResumePosition } = require('../services/audiobooks');
+      saveResumePosition(current.torrentName, current.id, positionMs);
+    }
   }, []);
 
   const seekByProgress = useCallback(async (progress: number) => {

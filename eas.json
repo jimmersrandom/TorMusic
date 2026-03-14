@@ -9,10 +9,12 @@
     },
     "preview": {
       "android": {
-        "buildType": "apk",
-        "image": "ubuntu-22.04-jdk-17-ndk-r26b"
+        "buildType": "apk"
       },
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_NO_TELEMETRY": "1"
+      }
     },
     "production": {}
   },
